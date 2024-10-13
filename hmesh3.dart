@@ -1,27 +1,3 @@
-// Huawei Mesh 3 API
-// A Command-line utility for communicating with Huawei Mesh 3 API
-//
-// Supported features:
-//  - Signing-in
-//  - Reboot
-//  - WAN detect
-//
-// Motivation:
-// I'm having an issue where wifi speed drops below 1Mbps for some nodes of the Huawei Mesh 3. The issue seem to be
-// resolved when a certain node is rebooted. Unfortuantely, the Huawei Mesh 3 online portal does not have an option
-// for auto-reboot. Although, my main router (Huawei 5G CPE Pro - H122-373) includes this option and I have Link+
-// activated, I don't believe the auto-reboot configuration is applied to the mesh nodes by Link+.
-//
-// Long story short, I wrote this program with the help from the references at the credits below plus inspecting the
-// API using the browser network devtools and wireshark.
-//
-//
-// Note: this may work with other Huawei routers, but it seems each one has its own subtle differences,
-//       whether in the API itself or the authentication protocol.
-//
-// Credits:
-//  - https://github.com/quzard/HW-TC7102/
-//  - https://gist.github.com/RazZziel/e10672e2ec208ab8cf4d431ab1e716c9
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -52,7 +28,6 @@ void main(List<String> args) async {
   parser.addFlag('device-info', abbr: 'd', negatable: false, help: 'Print Device Info');
   parser.addFlag('help', abbr: 'h', negatable: false, help: 'Display this help message');
 
-  // Parse the arguments
   var argResults = parser.parse(args);
 
   // Help
@@ -124,22 +99,8 @@ void main(List<String> args) async {
       print('--------------------------------');
     }
   }
-
-/* 
-  final routerConn = RouterConnection(ip: routerIP);
-
-  await routerConn.start();
-
-  await routerConn.signin();
-
-  // await routerConn.reboot();
-
-  await routerConn.wandetect();
-
-  routerConn.dispose(); */
 }
 
-// General Note: we need to update both the Cookies and the CSRF token/param after every successful request.
 class RouterConnection {
   final String ip;
   final String username;
@@ -148,14 +109,13 @@ class RouterConnection {
 
   RouterConnection({required this.username, required this.password, required this.ip}) {}
 
-  // note: these gets updated after every request
+  // These values need to be updated after each successful request.
   String? csrfToken;
   String? csrfParam;
   String? cookies;
 
-  // NOTE: we need to update both cookies and CSRF token/param after any request.
   // TODO: it would be better if we create our own post/get and intercept them
-  //       but note, not all responses' bodies may contain a JSON (especially error response)
+  //       but note that not all responses' bodies may contain a JSON (especially error response)
   //       that would contain CSRF token/param
   void updateCSRFsAndCookies({required Map<String, String> headers, required Map<String, dynamic> body}) {
     if (body.containsKey('csrf_param')) {
@@ -325,17 +285,22 @@ class RouterConnection {
 /* -------------------------------------------------------------------------- */
 
 class APIs {
-  // Does not require Log In:
+  static String login(String ip) => "https://$ip/api/system/user_login_nonce";
+
+  static String loginProof(String ip) => "https://$ip/api/system/user_login_proof";
+
+  /* -------------------------------------------------------------------------- */
+  /*                          Does not require Log In:                          */
+  /* -------------------------------------------------------------------------- */
   static String home(String ip) => 'https://$ip/html/index.html';
 
   static String wandetect(String ip) => 'https://$ip/api/ntwk/wandetect';
 
   static String deviceInfo(String ip) => 'https://$ip/api/system/deviceinfo';
 
-  static String login(String ip) => "https://$ip/api/system/user_login_nonce";
-
-  static String loginProof(String ip) => "https://$ip/api/system/user_login_proof";
-
+  /* -------------------------------------------------------------------------- */
+  /*                               Requires Log In                              */
+  /* -------------------------------------------------------------------------- */
   static String reboot(String ip) => "https://$ip/api/service/reboot.cgi";
 }
 
