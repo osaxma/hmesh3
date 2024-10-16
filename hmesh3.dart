@@ -26,9 +26,13 @@ void main(List<String> args) async {
   parser.addFlag('reboot', abbr: 'r', negatable: false, help: 'Reboot the routers');
   parser.addFlag('wan-detect', abbr: 'w', negatable: false, help: 'Print WAN detect output');
   parser.addFlag('device-info', abbr: 'd', negatable: false, help: 'Print Device Info');
+  parser.addFlag('unsecure', negatable: false, help: 'use http instead of https');
   parser.addFlag('help', abbr: 'h', negatable: false, help: 'Display this help message');
 
   var argResults = parser.parse(args);
+
+  // Can be handy when there are errors with certificates.
+  APIs.useHttps = argResults['unsecure'];
 
   // Help
   if (argResults['help'] as bool) {
@@ -77,8 +81,8 @@ void main(List<String> args) async {
   for (var conn in conns) {
     print('connecting to router ${conn.ip}');
     try {
-      print('-- signing in');
       if (reboot) {
+        print('-- signing in');
         await conn.start();
         await conn.signin();
         print('-- rebooting');
@@ -285,23 +289,28 @@ class RouterConnection {
 /* -------------------------------------------------------------------------- */
 
 class APIs {
-  static String login(String ip) => "https://$ip/api/system/user_login_nonce";
 
-  static String loginProof(String ip) => "https://$ip/api/system/user_login_proof";
+  static bool useHttps = true;
+
+  static String get protocol => useHttps ? 'https://' : 'https'; 
+
+  static String login(String ip) => "$protocol$ip/api/system/user_login_nonce";
+
+  static String loginProof(String ip) => "$protocol$ip/api/system/user_login_proof";
 
   /* -------------------------------------------------------------------------- */
   /*                          Does not require Log In:                          */
   /* -------------------------------------------------------------------------- */
-  static String home(String ip) => 'https://$ip/html/index.html';
+  static String home(String ip) => '$protocol$ip/html/index.html';
 
-  static String wandetect(String ip) => 'https://$ip/api/ntwk/wandetect';
+  static String wandetect(String ip) => '$protocol$ip/api/ntwk/wandetect';
 
-  static String deviceInfo(String ip) => 'https://$ip/api/system/deviceinfo';
+  static String deviceInfo(String ip) => '$protocol$ip/api/system/deviceinfo';
 
   /* -------------------------------------------------------------------------- */
   /*                               Requires Log In                              */
   /* -------------------------------------------------------------------------- */
-  static String reboot(String ip) => "https://$ip/api/service/reboot.cgi";
+  static String reboot(String ip) => "$protocol$ip/api/service/reboot.cgi";
 }
 
 Map<String, String> generateHeaders(String ip, {String? cookies, int? contentLength, bool get = false}) {
@@ -321,12 +330,12 @@ Map<String, String> generateHeaders(String ip, {String? cookies, int? contentLen
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
     "Accept-Encoding": "gzip, deflate",
     "Cache-Control": "max-age=0",
-    "Origin": "https://$ip",
+    "Origin": "${APIs.protocol}$ip",
     "Content-Type": "application/json;charset=UTF-8",
     "Accept": "application/json, text/javascript, */*; q=0.01",
     "X-Requested-With": "XMLHttpRequest",
     "_ResponseFormat": "JSON",
-    "Referer": "https://$ip/html/index.html",
+    "Referer": "${APIs.protocol}$ip/html/index.html",
     "Accept-Language": "en-US,en;q=0.9,ar;q=0.8,es;q=0.7,pt;q=0.6",
     if (cookies != null) "Cookie": cookies,
     if (contentLength != null) "Content-Length": contentLength.toString(),
